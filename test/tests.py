@@ -2,11 +2,21 @@ from afb_test import AFBTestCase, configure_afb_binding_tests, run_afb_binding_t
 import libafb
 import pdb
 import time
+import subprocess
+import unittest
 from time import sleep
 
 bindings = {"wifiAp": f"wifiap-binding.so"}
 
 def setUpModule():
+    try:
+        subprocess.run(
+            ["modprobe", "mac80211_hwsim", "radios=2"],
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise unittest.SkipTest(f"Fail to load mac80211_hwsim: {e}")
+
     configure_afb_binding_tests(bindings=bindings)
 
 class TestWifiAp(AFBTestCase):
@@ -21,8 +31,19 @@ class TestWifiAp(AFBTestCase):
         assert r.status == 0
 
     def test_start_stop_ap(self):
-        """Test starting and stopping the access point"""
-        # Start AP
+        r = libafb.callsync(self.binder, "wifiAp", "setInterfaceName", "wlan0")
+        assert r.status == 0
+
+        r = libafb.callsync(self.binder, "wifiAp", "setSsid", "testAP")
+        assert r.status == 0
+
+        r = libafb.callsync(self.binder, "wifiAp", "setChannel", 1)
+        assert r.status == 0
+
+        r = libafb.callsync(self.binder, "wifiAp", "setPassPhrase", "passwordtest")
+        assert r.status == 0
+
+	# Start AP
         r = libafb.callsync(self.binder, "wifiAp", "start")
         assert r.status == 0
         sleep(2)
